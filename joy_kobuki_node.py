@@ -29,8 +29,8 @@ class JoyKobukiNode(Node):
         self.delta_break = 0.25
         
     def joystick_callback(self, msg):
-        self.target_linear = float(1-msg.axes[5])/2
-        self.target_linear_rev = -1.0 * (float(1-msg.axes[2])/2)
+        self.target_linear = float(1-msg.axes[5])/2 * 0.8
+        self.target_linear_rev = -1.0 * (float(1-msg.axes[2])/2) * 0.8
         self.target_angular = float(msg.axes[0])
         
         
@@ -38,16 +38,16 @@ class JoyKobukiNode(Node):
         cmd = Twist()
         
         #forward
-        if abs(self.target_linear - self.current_linear) < self.delta_linear:
-            self.current_linear = self.target_linear
-        else:
-            if self.target_linear > self.current_linear:
-                self.current_linear += self.delta_linear
-            elif self.target_linear < self.current_linear:
-                self.current_linear -= self.delta_linear
-               
+        if self.target_linear != 0:
+            if abs(self.target_linear - self.current_linear) < self.delta_linear:
+                self.current_linear = self.target_linear
+            else:
+                if self.target_linear > self.current_linear:
+                    self.current_linear += self.delta_linear
+                elif self.target_linear < self.current_linear:
+                    self.current_linear -= self.delta_linear   
         #reverse
-        if self.target_linear == 0:
+        else:
             if abs(self.target_linear_rev - self.current_linear) < self.delta_linear:
                 self.current_linear = self.target_linear_rev
             else:
