@@ -26,35 +26,52 @@ class JoyKobukiNode(Node):
         self.target_angular = 0.0
         self.delta_linear = 0.1
         self.delta_angular = 0.2
-        self.delta_break = 0.25
+        self.delta_break = 0.5
+        self.target_break = 0.0
+        self.target_emergency_break = 0.0
         
     def joystick_callback(self, msg):
         self.target_linear = float(1-msg.axes[5])/2 * 0.8
         self.target_linear_rev = -1.0 * (float(1-msg.axes[2])/2) * 0.8
         self.target_angular = float(msg.axes[0])
+        self.target_break = float(msg.buttons[0])
+        self.target_emergency_break = float(msg.buttons[1])
         
         
     def timer_callback(self):
         cmd = Twist()
         
-        #forward
-        if self.target_linear != 0:
-            if abs(self.target_linear - self.current_linear) < self.delta_linear:
-                self.current_linear = self.target_linear
+        #emergency break
+        if self.target_emergency_break == 1:
+            self.current_linear = 0.0
+        #break (if break pressed, slow down faster)
+        elif self.target_break == 1:
+            if abs(self.current_linear) < self.delta_break:
+                    self.current_linear = 0.0
             else:
-                if self.target_linear > self.current_linear:
-                    self.current_linear += self.delta_linear
-                elif self.target_linear < self.current_linear:
-                    self.current_linear -= self.delta_linear   
-        #reverse
+                if self.current_linear < 0:
+                    self.current_linear += self.delta_break
+                elif self.current_linear > 0:
+                    self.current_linear -= self.delta_break  
         else:
-            if abs(self.target_linear_rev - self.current_linear) < self.delta_linear:
-                self.current_linear = self.target_linear_rev
+            #forward
+            if self.target_linear != 0:
+                if abs(self.target_linear - self.current_linear) < self.delta_linear:
+                    self.current_linear = self.target_linear
+                else:
+                    if self.target_linear > self.current_linear:
+                        self.current_linear += self.delta_linear
+                    elif self.target_linear < self.current_linear:
+                        self.current_linear -= self.delta_linear   
+            #reverse
             else:
-                if self.target_linear_rev > self.current_linear:
-                    self.current_linear += self.delta_linear
-                elif self.target_linear_rev < self.current_linear:
-                    self.current_linear -= self.delta_linear
+                if abs(self.target_linear_rev - self.current_linear) < self.delta_linear:
+                    self.current_linear = self.target_linear_rev
+                else:
+                    if self.target_linear_rev > self.current_linear:
+                        self.current_linear += self.delta_linear
+                    elif self.target_linear_rev < self.current_linear:
+                        self.current_linear -= self.delta_linear
                 
         #turn
         if abs(self.target_angular - self.current_angular) < self.delta_angular:
