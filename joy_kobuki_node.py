@@ -28,10 +28,17 @@ class JoyKobukiNode(Node):
         
         self.pub_sound = self.create_publisher(Sound, '/commands/sound', 0)
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.pubLed1 = self.create_publisher(Led, '/mobile_base/commands/led1', 1)
-        self.pubLed2 = self.create_publisher(Led, '/mobile_base/commands/led2', 1)
+        self.pubLed1 = self.create_publisher(Led, '/commands/led1', 1)
+        self.pubLed2 = self.create_publisher(Led, '/commands/led2', 1)
         
+<<<<<<< HEAD
         self.timer= self.create_timer(2, self.timer_sound_callback)
+=======
+        #timer for led demo
+        self.timer = self.create_timer(2, self.timer_callback)
+
+        #timer for actions
+>>>>>>> 7ec225d (last change commands 1)
         self.timer = self.create_timer(0.5, self.timer_callback)
         
         self.current_linear = 0.0
@@ -167,7 +174,7 @@ class JoyKobukiNode(Node):
         self.pub.publish(cmd)
 
         self.forward = self.current_linear > 0.0
-        self.backward = self.current_linear < 0.0 
+        self.backward = self.current_linear < -0.0
 
         led1msg = Led()
         led2msg = Led()
