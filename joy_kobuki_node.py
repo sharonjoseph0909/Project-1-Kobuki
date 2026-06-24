@@ -19,8 +19,8 @@ class JoyKobukiNode(Node):
         self.subscription
         
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.pubLed1 = self.create_publisher(Led, '/commands/led1', 1)
-        self.pubLed2 = self.create_publisher(Led, '/commands/led2', 1)
+        self.pubLed1 = self.create_publisher(Led, '/mobile_base/commands/led1', 1)
+        self.pubLed2 = self.create_publisher(Led, '/mobile_base/commands/led2', 1)
         
         self.timer = self.create_timer(2, self.timer_callback)
 
