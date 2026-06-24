@@ -23,13 +23,12 @@ class JoyKobukiNode(Node):
 self.bumper_callback, 10)
         self.subscription
         
+        self.pub_sound = self.create_publisher(Sound, '/commands/sound', 0)
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.pubLed1 = self.create_publisher(Led, '/mobile_base/commands/led1', 1)
         self.pubLed2 = self.create_publisher(Led, '/mobile_base/commands/led2', 1)
         
-        self.timer = self.create_timer(2, self.timer_callback)
-
-
+        self.timer= self.create_timer(2, self.timer_sound_callback)
         self.timer = self.create_timer(0.5, self.timer_callback)
         
         self.current_linear = 0.0
@@ -112,6 +111,7 @@ self.bumper_callback, 10)
                 if self.bumper and self.current_linear > 0:
                     self.current_linear = 0.0
                     
+                                   
                 if abs(self.target_linear_rev - self.current_linear) < self.delta_linear:
                     self.current_linear = self.target_linear_rev
                 else:
@@ -120,15 +120,16 @@ self.bumper_callback, 10)
                     elif self.target_linear_rev < self.current_linear:
                         self.current_linear -= self.delta_linear
 
-
+        
         #turn
-        if abs(self.target_angular - self.current_angular) < self.delta_angular:
-            self.current_angular = self.target_angular
-        else:
-            if self.target_angular > self.current_angular:
-                self.current_angular += self.delta_angular
-            elif self.target_angular < self.current_angular:
-                self.current_angular -= self.delta_angular
+        if not self.bumper:
+            if abs(self.target_angular - self.current_angular) < self.delta_angular:
+                self.current_angular = self.target_angular
+            else:
+                if self.target_angular > self.current_angular:
+                    self.current_angular += self.delta_angular
+                elif self.target_angular < self.current_angular:
+                    self.current_angular -= self.delta_angular
             
 
         cmd.linear.x = self.current_linear
@@ -160,6 +161,12 @@ self.bumper_callback, 10)
 
         self.pubLed1.publish(led1msg)
         self.pubLed2.publish(led2msg)
+        
+    def timer_sound_callback(self):
+        if self.current_linear < 0.0:
+            msg = Sound()
+            msg.value = 2
+            self.pub_sound.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)
