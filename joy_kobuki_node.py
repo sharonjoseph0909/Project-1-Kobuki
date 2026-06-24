@@ -6,6 +6,7 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import String
 from kobuki_ros_interfaces.msg import Led
 from kobuki_ros_interfaces.msg import Sound
+from kobuki_ros_interfaces.msg import BumperEvent
 
 class JoyKobukiNode(Node): 
     def __init__(self):
@@ -16,6 +17,10 @@ class JoyKobukiNode(Node):
             'joy',
             self.joystick_callback,
             10)
+        self.subscription
+        
+        self.subscription = self.create_subscription(BumperEvent, '/events/bumper',
+self.bumper_callback, 10)
         self.subscription
         
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
@@ -60,6 +65,20 @@ class JoyKobukiNode(Node):
 
         if msg.buttons[2] == 1: 
             self.smoother_enabled = not self.smoother_enabled
+            
+    def bumper_callback(self, msg):
+        if msg.bumper == 0:
+            print ('Left bumper: ', end="")
+        elif msg.bumper == 1:
+            print ('Center bumper: ', end="")
+        else:
+            print ('Right bumper: ', end="")
+        if msg.state == 0:
+            print ('Released')
+            self.bumper = False
+        else:
+            print ('Pressed')
+            self.bumper = True
 
     def timer_callback(self):
         cmd = Twist()
@@ -70,7 +89,7 @@ class JoyKobukiNode(Node):
         if self.target_emergency_break == 1:
             self.current_linear = 0.0
         #break (if break pressed, slow down faster)
-        elif self.target_break == 1:
+        elif self.target_break == 1 and not self.bumper:
             if abs(self.current_linear) < self.delta_break:
                     self.current_linear = 0.0
             else:
@@ -80,7 +99,7 @@ class JoyKobukiNode(Node):
                     self.current_linear -= self.delta_break  
         else:
             #forward
-            if self.target_linear != 0:
+            if self.target_linear != 0 and not self.bumper:
                 if abs(self.target_linear - self.current_linear) < self.delta_linear:
                     self.current_linear = self.target_linear
                 else:
@@ -90,6 +109,9 @@ class JoyKobukiNode(Node):
                         self.current_linear -= self.delta_linear   
             #reverse
             else:
+                if self.bumper and self.current_linear > 0:
+                    self.current_linear = 0.0
+                    
                 if abs(self.target_linear_rev - self.current_linear) < self.delta_linear:
                     self.current_linear = self.target_linear_rev
                 else:
