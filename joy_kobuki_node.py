@@ -170,7 +170,7 @@ class JoyKobukiNode(Node):
         self.pub.publish(cmd)
 
         self.forward = self.current_linear > 0.0
-        self.backward = self.current_linear < -0.0
+        self.backward = self.current_linear < 0.0
 
         led1msg = Led()
         led2msg = Led()
