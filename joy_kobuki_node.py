@@ -7,6 +7,7 @@ from std_msgs.msg import String
 from kobuki_ros_interfaces.msg import Led
 from kobuki_ros_interfaces.msg import Sound
 from kobuki_ros_interfaces.msg import BumperEvent
+from kobuki_ros_interfaces.msg import ButtonEvent
 
 class JoyKobukiNode(Node): 
     def __init__(self):
@@ -19,8 +20,10 @@ class JoyKobukiNode(Node):
             10)
         self.subscription
         
-        self.subscription = self.create_subscription(BumperEvent, '/events/bumper',
-self.bumper_callback, 10)
+        self.subscription = self.create_subscription(BumperEvent, '/events/bumper', self.bumper_callback, 10)
+        self.subscription
+        
+        self.subscription = self.create_subscription(ButtonEvent, '/events/button', self.button_callback, 10)
         self.subscription
         
         self.pub_sound = self.create_publisher(Sound, '/commands/sound', 0)
@@ -51,6 +54,7 @@ self.bumper_callback, 10)
         self.emergencybrake = False
         self.smoother_enabled = False
         self.bumper = False
+        self.smooth = False #B0 = no smooth, B1 = smooth
         
     def joystick_callback(self, msg):
         self.target_linear = float(1-msg.axes[5])/2 * 0.8
@@ -78,60 +82,86 @@ self.bumper_callback, 10)
         else:
             print ('Pressed')
             self.bumper = True
+            
+    def button_callback(self, msg):
+        if msg.button == 0:
+            print ('Button0: ', end="")
+            self.smooth = False
+        elif msg.button == 1:
+            print ('Button1: ', end="")
+            self.smooth = True
+        else:
+            print ('Button2: ', end="")
+        if msg.state == 0:
+            print ('Released')
+        else:
+            print ('Pressed')
 
     def timer_callback(self):
         cmd = Twist()
         
         #self.get_logger().debug('This is a debug message.')
         
-        #emergency break
-        if self.target_emergency_break == 1:
-            self.current_linear = 0.0
-        #break (if break pressed, slow down faster)
-        elif self.target_break == 1 and not self.bumper:
-            if abs(self.current_linear) < self.delta_break:
-                    self.current_linear = 0.0
-            else:
-                if self.current_linear < 0:
-                    self.current_linear += self.delta_break
-                elif self.current_linear > 0:
-                    self.current_linear -= self.delta_break  
-        else:
-            #forward
-            if self.target_linear != 0 and not self.bumper:
-                if abs(self.target_linear - self.current_linear) < self.delta_linear:
-                    self.current_linear = self.target_linear
+        if self.smooth:
+            #emergency break
+            if self.target_emergency_break == 1:
+                self.current_linear = 0.0
+            #break (if break pressed, slow down faster)
+            elif self.target_break == 1 and not self.bumper:
+                if abs(self.current_linear) < self.delta_break:
+                        self.current_linear = 0.0
                 else:
-                    if self.target_linear > self.current_linear:
-                        self.current_linear += self.delta_linear
-                    elif self.target_linear < self.current_linear:
-                        self.current_linear -= self.delta_linear   
-            #reverse
+                    if self.current_linear < 0:
+                        self.current_linear += self.delta_break
+                    elif self.current_linear > 0:
+                        self.current_linear -= self.delta_break  
             else:
-                if self.bumper and self.current_linear > 0:
-                    self.current_linear = 0.0
-                    
-                                   
-                if abs(self.target_linear_rev - self.current_linear) < self.delta_linear:
-                    self.current_linear = self.target_linear_rev
+                #forward
+                if self.target_linear != 0 and not self.bumper:
+                    if abs(self.target_linear - self.current_linear) < self.delta_linear:
+                        self.current_linear = self.target_linear
+                    else:
+                        if self.target_linear > self.current_linear:
+                            self.current_linear += self.delta_linear
+                        elif self.target_linear < self.current_linear:
+                            self.current_linear -= self.delta_linear   
+                #reverse
                 else:
-                    if self.target_linear_rev > self.current_linear:
-                        self.current_linear += self.delta_linear
-                    elif self.target_linear_rev < self.current_linear:
-                        self.current_linear -= self.delta_linear
+                    if self.bumper and self.current_linear > 0:
+                        self.current_linear = 0.0
+                        
+                                       
+                    if abs(self.target_linear_rev - self.current_linear) < self.delta_linear:
+                        self.current_linear = self.target_linear_rev
+                    else:
+                        if self.target_linear_rev > self.current_linear:
+                            self.current_linear += self.delta_linear
+                        elif self.target_linear_rev < self.current_linear:
+                            self.current_linear -= self.delta_linear
 
-        
-        #turn
-        if not self.bumper:
-            if abs(self.target_angular - self.current_angular) < self.delta_angular:
-                self.current_angular = self.target_angular
-            else:
-                if self.target_angular > self.current_angular:
-                    self.current_angular += self.delta_angular
-                elif self.target_angular < self.current_angular:
-                    self.current_angular -= self.delta_angular
             
-
+            #turn
+            if not self.bumper:
+                if abs(self.target_angular - self.current_angular) < self.delta_angular:
+                    self.current_angular = self.target_angular
+                else:
+                    if self.target_angular > self.current_angular:
+                        self.current_angular += self.delta_angular
+                    elif self.target_angular < self.current_angular:
+                        self.current_angular -= self.delta_angular
+        else:   #not smooth
+            if self.target_emergency_break == 1 or self.target_break == 1:      #QUESTION: do we add the smooth break option
+                self.current_linear = 0.0                                       #in the non-smoothening mode?
+                self.current_angular = 0.0
+            elif self.bumper:
+                self.current_linear = self.target_linear_rev
+                self.current_angular = 0.0
+            else:    
+                self.current_linear = self.target_linear        
+                if self.target_linear == 0:                     
+                    self.current_linear = self.target_linear_rev
+                self.current_angular = self.target_angular
+            
         cmd.linear.x = self.current_linear
         cmd.angular.z = self.current_angular
         self.pub.publish(cmd)
