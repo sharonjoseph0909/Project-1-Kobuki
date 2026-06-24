@@ -153,7 +153,7 @@ class JoyKobukiNode(Node):
                     elif self.target_angular < self.current_angular:
                         self.current_angular -= self.delta_angular
         else:   #not smooth
-            if self.target_emergency_brake == 1 or self.target_brake == 1:      #QUESTION: do we add the smooth brake option
+            if self.target_brake == 1:      #QUESTION: do we add the smooth brake option
                 self.current_linear = 0.0                                       #in the non-smoothening mode?
                 self.current_angular = 0.0
             elif self.bumper:                                                   #QUESTION: should 0.8 be the max speed?
