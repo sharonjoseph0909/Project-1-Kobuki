@@ -43,7 +43,7 @@ class JoyKobukiNode(Node):
         self.left = False
         self.right = False
         self.emergencybrake = False
-        self.smoother = False
+        self.smoother_enabled = False
         self.bumper = False
         
     def joystick_callback(self, msg):
@@ -107,6 +107,36 @@ class JoyKobukiNode(Node):
             elif self.current_linear < 0:
                 self.current_linear = min(0.0, self.current_linear + self.delta_break)
 
+        cmd.linear.x = self.current_linear
+        cmd.angular.z = self.current_angular
+        self.pub.publish(cmd)
+
+        self.forward = self.current_linear > 0.0
+        self.backward = self.current_linear < 0.0 
+
+        led1msg = Led()
+        led2msg = Led()
+
+        if self.emergencybrake:
+            led1msg.value = 3 #off
+            led2msg.value = 3       
+        elif self.brake:
+            led1msg.value = 0 #red
+            led2msg.value = 3 #off
+        elif self.backward or self.bumper:
+            led1msg.value = 3 #off
+            led2msg.value = 1 #orange
+        else:
+            if self.smoother_enabled:
+                led1msg.value = 2 #green
+                led2msg.value = 2 #green
+            else:
+                led1msg.value = 3 #off
+                led2msg.value = 3 #off
+
+        self.pubLed1.publish(led1msg)
+        self.pubLed2.publish(led2msg)
+
 def main(args=None):
     rclpy.init(args=args)
     aJoy = JoyKobukiNode()
@@ -122,55 +152,3 @@ def main(args=None):
         
 if __name__== '__main__':
     main()
-
-class LedDemo(Node):
-    def __init__(self):
-        super().__init__('sound_demo')
-        self.names = ['RED', 'ORANGE', 'GREEN', 'OFF']
-        self.counter = 3
-        self.ledNumber = 1
-
-    def timer_callback(self):
-
-        if self.isenable == True:
-            pass
-        else:
-            self.backward = False
-            self.brake = False
-            self.forward = False  
-            self.left = False
-            self.right = False
-
-        if self.pubLed1.get_subscription_count() == 0:
-            print ('Waiting for a subscriber of led1. ')
-        if self.pubLed2.get_subscription_count() == 0:
-            print ('Waiting for a subscriber of led2. ')
-        msg = Led()
-        msg.value = self.counter
-        print ('Led%i - msg.value = %i [%s]' % (self.ledNumber, msg.value,
-    self.names[msg.value]))
-        
-        if self.ledNumber == 1:
-            self.pubLed1.publish(msg)
-        else:
-            self.pubLed2.publish(msg)
-        self.counter = 3
-        if self.ledNumber == 1:
-            self.ledNumber = 2
-        else:
-            raise SystemExit
-        
-    def main(args=None):
-        rclpy.init(args=args)
-        aNode = LedDemo()
-        try:
-            rclpy.spin(aNode)
-        except (KeyboardInterrupt, SystemExit):
-            pass
-        finally:
-            aNode.destroy_node()
-            if rclpy.ok():
-                rclpy.shutdown()
-
-    if __name__ == '__main__':
-        main()
