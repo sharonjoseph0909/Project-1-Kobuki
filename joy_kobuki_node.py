@@ -41,9 +41,9 @@ class JoyKobukiNode(Node):
         self.target_angular = 0.0
         self.delta_linear = 0.1
         self.delta_angular = 0.2
-        self.delta_break = 0.25
-        self.target_break = 0.0
-        self.target_emergency_break = 0.0
+        self.delta_brake = 0.25
+        self.target_brake = 0.0
+        self.target_emergency_brake = 0.0
 
         # statements for led demo
         self.backward = False
@@ -60,8 +60,8 @@ class JoyKobukiNode(Node):
         self.target_linear = float(1-msg.axes[5])/2 * 0.8
         self.target_linear_rev = -1.0 * (float(1-msg.axes[2])/2) * 0.8
         self.target_angular = float(msg.axes[0])
-        self.target_break = float(msg.buttons[0])
-        self.target_emergency_break = float(msg.buttons[1])
+        self.target_brake = float(msg.buttons[0])
+        self.target_emergency_brake = float(msg.buttons[1])
         
         self.brake = bool(msg.buttons[0]) # regular brake button push 
         self.emergencybrake = bool(msg.buttons[1]) # emergency brake button push 
@@ -103,18 +103,18 @@ class JoyKobukiNode(Node):
         #self.get_logger().debug('This is a debug message.')
         
         if self.smooth:
-            #emergency break
-            if self.target_emergency_break == 1:
+            #emergency brake
+            if self.target_emergency_brake == 1:
                 self.current_linear = 0.0
-            #break (if break pressed, slow down faster)
-            elif self.target_break == 1 and not self.bumper:
-                if abs(self.current_linear) < self.delta_break:
+            #brake (if brake pressed, slow down faster)
+            elif self.target_brake == 1 and not self.bumper:
+                if abs(self.current_linear) < self.delta_brake:
                         self.current_linear = 0.0
                 else:
                     if self.current_linear < 0:
-                        self.current_linear += self.delta_break
+                        self.current_linear += self.delta_brake
                     elif self.current_linear > 0:
-                        self.current_linear -= self.delta_break  
+                        self.current_linear -= self.delta_brake  
             else:
                 #forward
                 if self.target_linear != 0 and not self.bumper:
@@ -150,7 +150,7 @@ class JoyKobukiNode(Node):
                     elif self.target_angular < self.current_angular:
                         self.current_angular -= self.delta_angular
         else:   #not smooth
-            if self.target_emergency_break == 1 or self.target_break == 1:      #QUESTION: do we add the smooth break option
+            if self.target_emergency_brake == 1 or self.target_brake == 1:      #QUESTION: do we add the smooth brake option
                 self.current_linear = 0.0                                       #in the non-smoothening mode?
                 self.current_angular = 0.0
             elif self.bumper:
