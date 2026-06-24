@@ -31,14 +31,10 @@ class JoyKobukiNode(Node):
         self.pubLed1 = self.create_publisher(Led, '/commands/led1', 1)
         self.pubLed2 = self.create_publisher(Led, '/commands/led2', 1)
         
-<<<<<<< HEAD
-        self.timer= self.create_timer(2, self.timer_sound_callback)
-=======
         #timer for led demo
         self.timer = self.create_timer(2, self.timer_callback)
 
         #timer for actions
->>>>>>> 7ec225d (last change commands 1)
         self.timer = self.create_timer(0.5, self.timer_callback)
         
         self.current_linear = 0.0
