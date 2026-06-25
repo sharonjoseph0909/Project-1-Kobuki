@@ -35,16 +35,17 @@ class JoyKobukiNode(Node):
         #self.timer = self.create_timer(2, self.timer_callback)
         
         self.timer= self.create_timer(2, self.timer_sound_callback)
-        self.timer = self.create_timer(0.5, self.timer_callback)
+        self.timer = self.create_timer(0.1, self.timer_callback)
         
         self.current_linear = 0.0
         self.current_angular = 0.0
         self.target_linear = 0.0
         self.target_linear_rev = 0.0
         self.target_angular = 0.0
-        self.delta_linear = 0.1
-        self.delta_angular = 0.2
-        self.delta_brake = 0.25
+        self.delta_linear = 0.05 #0.1
+        self.delta_angular = 0.1 #0.2
+        self.delta_brake_angular = 0.15 #0.25
+        self.delta_brake_linear = 0.075
         self.target_brake = 0.0
         self.target_emergency_brake = 0.0
 
@@ -109,15 +110,24 @@ class JoyKobukiNode(Node):
             #emergency brake
             if self.target_emergency_brake == 1:
                 self.current_linear = 0.0
+                self.current_angular = 0.0
             #brake (if brake pressed, slow down faster)
             elif self.target_brake == 1 and not self.bumper:
-                if abs(self.current_linear) < self.delta_brake:
+                if abs(self.current_linear) < self.delta_brake_linear:
                         self.current_linear = 0.0
                 else:
                     if self.current_linear < 0:
-                        self.current_linear += self.delta_brake
+                        self.current_linear += self.delta_brake_linear
                     elif self.current_linear > 0:
-                        self.current_linear -= self.delta_brake  
+                        self.current_linear -= self.delta_brake_linear 
+                        
+                if abs(self.current_angular) < self.delta_brake_angular:
+                    self.current_angular = 0.0
+                else:
+                    if self.current_angular < 0:
+                        self.current_angular += self.delta_brake_angular
+                    elif self.current_angular > 0:
+                        self.current_angular -= self.delta_brake_angular
             else:
                 #forward
                 if self.target_linear != 0 and not self.bumper:
@@ -130,8 +140,10 @@ class JoyKobukiNode(Node):
                             self.current_linear -= self.delta_linear   
                 #reverse
                 else:
-                    if self.bumper and self.current_linear > 0:
-                        self.current_linear = 0.0
+                    if self.bumper:
+                        self.current_angular = 0.0
+                        if self.current_linear > 0:
+                            self.current_linear = 0.0
                         
                                        
                     if abs(self.target_linear_rev - self.current_linear) < self.delta_linear:
@@ -144,7 +156,7 @@ class JoyKobukiNode(Node):
 
             
             #turn
-            if not self.bumper:
+            if not self.bumper and self.target_brake == 0 and self.target_emergency_brake == 0:
                 if abs(self.target_angular - self.current_angular) < self.delta_angular:
                     self.current_angular = self.target_angular
                 else:
@@ -153,16 +165,16 @@ class JoyKobukiNode(Node):
                     elif self.target_angular < self.current_angular:
                         self.current_angular -= self.delta_angular
         else:   #not smooth
-            if self.target_brake == 1:      #QUESTION: do we add the smooth brake option
-                self.current_linear = 0.0                                       #in the non-smoothening mode?
+            if self.target_brake == 1 or self.target_emergency_brake == 1:      #QUESTION: do we add the smooth brake option
+                self.current_linear = 0.0                   #in the non-smoothening mode? NO
                 self.current_angular = 0.0
-            elif self.bumper:                                                   #QUESTION: should 0.8 be the max speed?
-                self.current_linear = self.target_linear_rev
+            elif self.bumper:                                                   #QUESTION: should 0.8 be the max speed? YES
+                self.current_linear = self.target_linear_rev *0.8
                 self.current_angular = 0.0
             else:    
-                self.current_linear = self.target_linear        
+                self.current_linear = self.target_linear *0.8        
                 if self.target_linear == 0:                     
-                    self.current_linear = self.target_linear_rev
+                    self.current_linear = self.target_linear_rev *0.8
                 self.current_angular = self.target_angular
             
         cmd.linear.x = self.current_linear
