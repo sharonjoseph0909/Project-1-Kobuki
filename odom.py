@@ -98,7 +98,7 @@ class Odom(Node):
         if abs(self.cur_max_speed) > 0:
             if self.cur_target_angular == 0:    #linear move
                 print("LIN POS: ", self.linear_pos)
-                if (self.cur_max_speed > 0 and self.linear_pos >= self.cur_target_linear) or (self.cur_max_speed < 0 and self.linear_pos <= self.cur_target_linear):    #linear move finished - stop
+                if (self.cur_max_speed > 0 and self.linear_pos >= self.cur_target_linear - 0.005) or (self.cur_max_speed < 0 and self.linear_pos <= self.cur_target_linear + 0.005):    #linear move finished - stop
                     self.cur_max_speed = 0.0
                     self.current_linear = 0.0
                     self.max_speed_list.pop(0)
@@ -106,12 +106,12 @@ class Odom(Node):
                     self.target_angular_list.pop(0)
                     self.pub_reset.publish(Empty())
                 #elif (self.cur_max_speed > 0 and self.linear_pos >= self.cur_target_linear - self.current_linear*0.5) or (self.cur_max_speed < 0 and self.linear_pos <= self.cur_target_linear - self.current_linear*0.5):  #decelerate to 0.01
-                elif abs(self.linear_pos) >= abs(self.cur_target_linear)/2 and (abs(self.current_linear) < abs(self.cur_max_speed) or abs(self.linear_pos) >= abs(self.cur_target_linear - self.decel_pos)): 
+                elif abs(self.linear_pos) >= abs(self.cur_target_linear)/2 and (abs(self.current_linear) < abs(self.cur_max_speed) or abs(self.linear_pos) >= abs(self.cur_target_linear - self.decel_pos) - abs(self.cur_target_linear*self.cur_max_speed)): 
                     print("deceleration working")
                     if self.cur_max_speed > 0:
-                        self.cur_max_speed = 0.01
+                        self.cur_max_speed = 0.05
                     else:
-                        self.cur_max_speed = -0.01
+                        self.cur_max_speed = -0.05
                         
             elif self.cur_target_linear == 0:   #angular move
                 print("ANGLE: ", self.angular_pos)
