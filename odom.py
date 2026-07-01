@@ -53,6 +53,9 @@ class Odom(Node):
         self.decel_pos = 0.0
         self.decel_pos_ang = 0.0
         
+        self.led1msg = Led()
+        self.led2msg = Led()
+        
     def odom_callback(self, msg):
         x = msg.pose.pose.position.x
         y = msg.pose.pose.position.y
@@ -67,35 +70,37 @@ class Odom(Node):
         self.angular_pos = degree
         
     def led_callback(self):
-        led1msg = Led()
-        led2msg = Led()
+        
         if self.cur_target_angular != 0:    #angular move
-            print('bug2')
+            #print('bug2')
             if self.current_angular == 0:    #not turning - lights off
-                led1msg.value = 0 #off
-                led2msg.value = 0 #off
+                self.led1msg.value = 0 #off
+                self.led2msg.value = 0 #off
             elif self.current_angular > 0:  #left turn - LED 1 blink
-                led2msg.value = 0 #off
-                if led1msg.value == 2:
-                    led1msg.value = 0 #off
+                print('1')
+                #self.led2msg.value = 0 #off
+                if self.led1msg.value == 2:
+                    self.led1msg.value = 0 #off
                 else:
-                    led1msg.value = 2 #orange
+                    self.led1msg.value = 2 #orange
             else:                           #right turn - LED 2 blink
-                led1msg.value = 0 #off
-                if led2msg.value == 2:
-                    led2msg.value = 0 #off
+                print('help')
+                #self.led1msg.value = 0 #off
+                if self.led2msg.value == 2:
+                    print('2')
+                    self.led2msg.value = 0 #off
                 else:
-                    led2msg.value = 2 #orange
+                    self.led2msg.value = 2 #orange
         elif self.current_linear < 0:    #backward move
-            led1msg.value = 2 #orange
-            led2msg.value = 2 #orange
+            self.led1msg.value = 2 #orange
+            self.led2msg.value = 2 #orange
         else:
             #print('bug')
-            led1msg.value = 0 #off
-            led2msg.value = 0 #off
+            self.led1msg.value = 0 #off
+            self.led2msg.value = 0 #off
         
-        self.pubLed1.publish(led1msg)
-        self.pubLed2.publish(led2msg)
+        self.pubLed1.publish(self.led1msg)
+        self.pubLed2.publish(self.led2msg)
         
     def move_callback(self):
         cmd = Twist()
@@ -131,12 +136,12 @@ class Odom(Node):
                             self.cur_target_angular *= -1
                     else:
                         #sys.exit(0)
-                        led1msg = Led()
-                        led2msg = Led()
-                        led1msg.value = 0
-                        led2msg.value = 0
-                        self.pubLed1.publish(led1msg)
-                        self.pubLed2.publish(led2msg)
+                        self.led1msg = Led()
+                        self.led2msg = Led()
+                        self.led1msg.value = 0
+                        self.led2msg.value = 0
+                        self.pubLed1.publish(self.led1msg)
+                        self.pubLed2.publish(self.led2msg)
                         
                         
                     
@@ -153,7 +158,7 @@ class Odom(Node):
                         
             elif self.cur_target_linear == 0:   #angular move
                 print("ANGLE: ", self.angular_pos)
-                if (self.cur_max_speed > 0 and self.angular_pos >= self.cur_target_angular - 1.5) or (self.cur_max_speed < 0 and self.angular_pos <= self.cur_target_angular + 1.5):    #angular move finished - stop
+                if (self.cur_max_speed > 0 and self.angular_pos >= self.cur_target_angular - 1) or (self.cur_max_speed < 0 and self.angular_pos <= self.cur_target_angular + 1):    #angular move finished - stop
                     self.pub_reset.publish(Empty())
                     self.cur_max_speed = 0.0
                     self.current_linear = 0.0
@@ -181,17 +186,17 @@ class Odom(Node):
                             self.cur_target_angular *= -1
                     else:
                         #sys.exit(0)
-                        led1msg = Led()
-                        led2msg = Led()
-                        led1msg.value = 0
-                        led2msg.value = 0
-                        self.pubLed1.publish(led1msg)
-                        self.pubLed2.publish(led2msg)
-                        
-                    time.sleep(2)
+                        self.led1msg = Led()
+                        self.led2msg = Led()
+                        self.led1msg.value = 0
+                        self.led2msg.value = 0
+                        self.pubLed1.publish(self.led1msg)
+                        self.pubLed2.publish(self.led2msg)
+                    self.pub_reset.publish(Empty())
+                    time.sleep(5)
                     return
                     
-                elif abs(self.angular_pos) >= abs(self.cur_target_angular)/2 and (abs(self.current_angular) < abs(self.cur_max_speed) or abs(self.angular_pos) >= abs(self.cur_target_angular) - abs(self.decel_pos_ang)-10): 
+                elif abs(self.angular_pos) >= abs(self.cur_target_angular)/2 and (abs(self.current_angular) < abs(self.cur_max_speed) or abs(self.angular_pos) >= abs(self.cur_target_angular) - abs(self.decel_pos_ang)-25): 
                     print("deceleration working")
                     if self.cur_max_speed > 0:
                         self.cur_max_speed = 0.1
@@ -284,12 +289,12 @@ def main(args=None):
                 aNode.cur_target_angular *= -1
                 
             #turn off LEDs
-            led1msg = Led()
-            led2msg = Led()
-            led1msg.value = 0
-            led2msg.value = 0
-            aNode.pubLed1.publish(led1msg)
-            aNode.pubLed2.publish(led2msg)
+            aNode.led1msg = Led()
+            aNode.led2msg = Led()
+            aNode.led1msg.value = 0
+            aNode.led2msg.value = 0
+            aNode.pubLed1.publish(aNode.led1msg)
+            aNode.pubLed2.publish(aNode.led2msg)
             rclpy.spin(aNode)
             
         
