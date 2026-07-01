@@ -31,7 +31,7 @@ class JoyKobukiNode(Node):
         self.pubLed1 = self.create_publisher(Led, '/commands/led1', 1)
         self.pubLed2 = self.create_publisher(Led, '/commands/led2', 1)
         
-        #timer for led demo
+        #timer for led demo sharon
         self.timer = self.create_timer(2, self.timer_callback)
 
         #timer for actions
@@ -48,7 +48,7 @@ class JoyKobukiNode(Node):
         self.target_break = 0.0
         self.target_emergency_break = 0.0
 
-        # statements for led demo
+        # statements for led demo (sharon)
         self.backward = False
         self.brake = False
         self.forward = False
@@ -57,7 +57,7 @@ class JoyKobukiNode(Node):
         self.emergencybrake = False
         self.smoother_enabled = False
         self.bumper = False
-        self.smooth = False #B0 = no smooth, B1 = smooth
+        self.smooth = False #B0 = no smooth, B1 = smooth (derin)
         
     def joystick_callback(self, msg):
         self.target_linear = float(1-msg.axes[5])/2 * 0.8
@@ -66,10 +66,10 @@ class JoyKobukiNode(Node):
         self.target_break = float(msg.buttons[0])
         self.target_emergency_break = float(msg.buttons[1])
         
-        self.brake = bool(msg.buttons[0]) # regular brake button push 
+        self.brake = bool(msg.buttons[0]) # regular brake button push (sharon)
         self.emergencybrake = bool(msg.buttons[1]) # emergency brake button push 
 
-        if msg.buttons[2] == 1: 
+        if msg.buttons[2] == 1: #(sharon)
             self.smoother_enabled = not self.smoother_enabled
             
     def bumper_callback(self, msg):
@@ -142,7 +142,6 @@ class JoyKobukiNode(Node):
                         elif self.target_linear_rev < self.current_linear:
                             self.current_linear -= self.delta_linear
 
-            
             #turn
             if not self.bumper:
                 if abs(self.target_angular - self.current_angular) < self.delta_angular:
@@ -169,12 +168,14 @@ class JoyKobukiNode(Node):
         cmd.angular.z = self.current_angular
         self.pub.publish(cmd)
 
+        # (sharon) statements for led demo
         self.forward = self.current_linear > 0.0
         self.backward = self.current_linear < 0.0
 
         led1msg = Led()
         led2msg = Led()
 
+        #sharon: led demo statements
         if self.emergencybrake:
             led1msg.value = 3 #off
             led2msg.value = 3       
