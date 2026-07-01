@@ -31,24 +31,25 @@ class JoyKobukiNode(Node):
         self.pubLed1 = self.create_publisher(Led, '/commands/led1', 1)
         self.pubLed2 = self.create_publisher(Led, '/commands/led2', 1)
         
-        #timer for led demo sharon
-        self.timer = self.create_timer(2, self.timer_callback)
-
-        #timer for actions
-        self.timer = self.create_timer(0.5, self.timer_callback)
+        #timer for led demo
+        #self.timer = self.create_timer(2, self.timer_callback)
+        
+        self.timer= self.create_timer(2, self.timer_sound_callback)
+        self.timer = self.create_timer(0.1, self.timer_callback)
         
         self.current_linear = 0.0
         self.current_angular = 0.0
         self.target_linear = 0.0
         self.target_linear_rev = 0.0
         self.target_angular = 0.0
-        self.delta_linear = 0.1
-        self.delta_angular = 0.2
-        self.delta_break = 0.25
-        self.target_break = 0.0
-        self.target_emergency_break = 0.0
+        self.delta_linear = 0.05 #0.1
+        self.delta_angular = 0.1 #0.2
+        self.delta_brake_angular = 0.15 #0.25
+        self.delta_brake_linear = 0.075
+        self.target_brake = 0.0
+        self.target_emergency_brake = 0.0
 
-        # statements for led demo (sharon)
+        # statements for led demo
         self.backward = False
         self.brake = False
         self.forward = False
@@ -57,19 +58,19 @@ class JoyKobukiNode(Node):
         self.emergencybrake = False
         self.smoother_enabled = False
         self.bumper = False
-        self.smooth = False #B0 = no smooth, B1 = smooth (derin)
+        self.smooth = False #B0 = no smooth, B1 = smooth
         
     def joystick_callback(self, msg):
         self.target_linear = float(1-msg.axes[5])/2 * 0.8
         self.target_linear_rev = -1.0 * (float(1-msg.axes[2])/2) * 0.8
         self.target_angular = float(msg.axes[0])
-        self.target_break = float(msg.buttons[0])
-        self.target_emergency_break = float(msg.buttons[1])
+        self.target_brake = float(msg.buttons[0])
+        self.target_emergency_brake = float(msg.buttons[1])
         
-        self.brake = bool(msg.buttons[0]) # regular brake button push (sharon)
+        self.brake = bool(msg.buttons[0]) # regular brake button push 
         self.emergencybrake = bool(msg.buttons[1]) # emergency brake button push 
 
-        if msg.buttons[2] == 1: #(sharon)
+        if msg.buttons[2] == 1: 
             self.smoother_enabled = not self.smoother_enabled
             
     def bumper_callback(self, msg):
@@ -106,18 +107,27 @@ class JoyKobukiNode(Node):
         #self.get_logger().debug('This is a debug message.')
         
         if self.smooth:
-            #emergency break
-            if self.target_emergency_break == 1:
+            #emergency brake
+            if self.target_emergency_brake == 1:
                 self.current_linear = 0.0
-            #break (if break pressed, slow down faster)
-            elif self.target_break == 1 and not self.bumper:
-                if abs(self.current_linear) < self.delta_break:
+                self.current_angular = 0.0
+            #brake (if brake pressed, slow down faster)
+            elif self.target_brake == 1 and not self.bumper:
+                if abs(self.current_linear) < self.delta_brake_linear:
                         self.current_linear = 0.0
                 else:
                     if self.current_linear < 0:
-                        self.current_linear += self.delta_break
+                        self.current_linear += self.delta_brake_linear
                     elif self.current_linear > 0:
-                        self.current_linear -= self.delta_break  
+                        self.current_linear -= self.delta_brake_linear 
+                        
+                if abs(self.current_angular) < self.delta_brake_angular:
+                    self.current_angular = 0.0
+                else:
+                    if self.current_angular < 0:
+                        self.current_angular += self.delta_brake_angular
+                    elif self.current_angular > 0:
+                        self.current_angular -= self.delta_brake_angular
             else:
                 #forward
                 if self.target_linear != 0 and not self.bumper:
@@ -130,8 +140,10 @@ class JoyKobukiNode(Node):
                             self.current_linear -= self.delta_linear   
                 #reverse
                 else:
-                    if self.bumper and self.current_linear > 0:
-                        self.current_linear = 0.0
+                    if self.bumper:
+                        self.current_angular = 0.0
+                        if self.current_linear > 0:
+                            self.current_linear = 0.0
                         
                                        
                     if abs(self.target_linear_rev - self.current_linear) < self.delta_linear:
@@ -142,8 +154,9 @@ class JoyKobukiNode(Node):
                         elif self.target_linear_rev < self.current_linear:
                             self.current_linear -= self.delta_linear
 
+            
             #turn
-            if not self.bumper:
+            if not self.bumper and self.target_brake == 0 and self.target_emergency_brake == 0:
                 if abs(self.target_angular - self.current_angular) < self.delta_angular:
                     self.current_angular = self.target_angular
                 else:
@@ -152,49 +165,48 @@ class JoyKobukiNode(Node):
                     elif self.target_angular < self.current_angular:
                         self.current_angular -= self.delta_angular
         else:   #not smooth
-            if self.target_emergency_break == 1 or self.target_break == 1:      #QUESTION: do we add the smooth break option
-                self.current_linear = 0.0                                       #in the non-smoothening mode?
+            if self.target_brake == 1 or self.target_emergency_brake == 1:      #QUESTION: do we add the smooth brake option
+                self.current_linear = 0.0                   #in the non-smoothening mode? NO
                 self.current_angular = 0.0
-            elif self.bumper:
-                self.current_linear = self.target_linear_rev
+            elif self.bumper:                                                   #QUESTION: should 0.8 be the max speed? YES
+                self.current_linear = self.target_linear_rev *0.8
                 self.current_angular = 0.0
             else:    
-                self.current_linear = self.target_linear        
+                self.current_linear = self.target_linear *0.8        
                 if self.target_linear == 0:                     
-                    self.current_linear = self.target_linear_rev
+                    self.current_linear = self.target_linear_rev *0.8
                 self.current_angular = self.target_angular
             
         cmd.linear.x = self.current_linear
         cmd.angular.z = self.current_angular
-        self.pub.publish(cmd)
+        
 
-        # (sharon) statements for led demo
         self.forward = self.current_linear > 0.0
-        self.backward = self.current_linear < 0.0
+        self.backward = self.current_linear < 0.0 
 
         led1msg = Led()
         led2msg = Led()
-
-        #sharon: led demo statements
-        if self.emergencybrake:
-            led1msg.value = 3 #off
-            led2msg.value = 3       
-        elif self.brake:
-            led1msg.value = 0 #red
-            led2msg.value = 3 #off
-        elif self.backward or self.bumper:
-            led1msg.value = 3 #off
-            led2msg.value = 1 #orange
+        
+        if self.smooth:
+            led1msg.value = 1 #green
+            led2msg.value = 1 #green
         else:
-            if self.smoother_enabled:
-                led1msg.value = 2 #green
-                led2msg.value = 2 #green
-            else:
-                led1msg.value = 3 #off
-                led2msg.value = 3 #off
-
+            led1msg.value = 0 #off
+            led2msg.value = 0 #off
+        
+        if self.target_emergency_brake == 1:
+            led1msg.value = 3 #red
+            #led2msg.value = 0       
+        elif self.target_brake == 1:
+            led1msg.value = 3 #red
+            #led2msg.value = 3 #off
+        elif self.backward:
+            #led1msg.value = 3 #off
+            led2msg.value = 2 #orange
+        
         self.pubLed1.publish(led1msg)
         self.pubLed2.publish(led2msg)
+        self.pub.publish(cmd)
         
     def timer_sound_callback(self):
         if self.current_linear < 0.0:
