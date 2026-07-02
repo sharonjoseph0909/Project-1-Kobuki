@@ -322,19 +322,14 @@ def main(args=None):
             aNode.pubLed2.publish(aNode.led2msg)
             rclpy.spin(aNode)
             
-        
-                
-                aNode.should_exit_spin = False
-
-                #sharon
-                while rclpy.ok() and not aNode.should_exit_spin:
+            aNode.should_exit_spin = False
+            
+            while rclpy.ok() and not aNode.should_exit_spin:
                     rclpy.spin_once(aNode, timeout_sec=0.1)
-                
-                if aNode.finished:
-                    break
+                    
+                    if aNode.finished:
+                        break
 
-
-        
     except KeyboardInterrupt:
         pass
     finally:
