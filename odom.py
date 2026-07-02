@@ -5,6 +5,8 @@ from kobuki_ros_interfaces.msg import BumperEvent
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Empty
 from kobuki_ros_interfaces.msg import Led
+import time
+import sys
 
 import math
 
@@ -26,7 +28,7 @@ class Odom(Node):
         self.pubLed2 = self.create_publisher(Led, '/commands/led2', 1)
         
         self.timer = self.create_timer(0.1, self.move_callback)
-        self.timer = self.create_timer(1, self.led_callback)
+        self.timer = self.create_timer(0.25, self.led_callback)
         
         self.current_linear = 0.0
         self.current_angular = 0.0
@@ -49,6 +51,10 @@ class Odom(Node):
         self.linear_pos = 0.0
         self.angular_pos = 0.0
         self.decel_pos = 0.0
+        self.decel_pos_ang = 0.0
+        
+        self.led1msg = Led()
+        self.led2msg = Led()
         
     def odom_callback(self, msg):
         x = msg.pose.pose.position.x
@@ -64,33 +70,37 @@ class Odom(Node):
         self.angular_pos = degree
         
     def led_callback(self):
-        led1msg = Led()
-        led2msg = Led()
-        if self.cur_target_angular != 0:    #angular move
-            if self.current_angular == 0:    #not turning - lights off
-                led1msg.value = 0 #off
-                led2msg.value = 0 #off
-            elif self.current_angular > 0:  #left turn - LED 1 blink
-                led2msg.value = 0 #off
-                if led1msg.value == 2:
-                    led1msg.value = 0 #off
-                else:
-                    led1msg.value = 2 #orange
-            else:                           #right turn - LED 2 blink
-                led1msg.value = 0 #off
-                if led2msg.value == 2:
-                    led2msg.value = 0 #off
-                else:
-                    led2msg.value = 2 #orange
-        elif self.current_linear < 0:    #backward move
-            led1msg.value = 2 #orange
-            led2msg.value = 2 #orange
-        else:
-            led1msg.value = 0 #off
-            led2msg.value = 0 #off
         
-        self.pubLed1.publish(led1msg)
-        self.pubLed2.publish(led2msg)
+        if self.cur_target_angular != 0:    #angular move
+            #print('bug2')
+            if self.current_angular == 0:    #not turning - lights off
+                self.led1msg.value = 0 #off
+                self.led2msg.value = 0 #off
+            elif self.current_angular > 0:  #left turn - LED 1 blink
+                print('1')
+                #self.led2msg.value = 0 #off
+                if self.led1msg.value == 2:
+                    self.led1msg.value = 0 #off
+                else:
+                    self.led1msg.value = 2 #orange
+            else:                           #right turn - LED 2 blink
+                print('help')
+                #self.led1msg.value = 0 #off
+                if self.led2msg.value == 2:
+                    print('2')
+                    self.led2msg.value = 0 #off
+                else:
+                    self.led2msg.value = 2 #orange
+        elif self.current_linear < 0:    #backward move
+            self.led1msg.value = 2 #orange
+            self.led2msg.value = 2 #orange
+        else:
+            #print('bug')
+            self.led1msg.value = 0 #off
+            self.led2msg.value = 0 #off
+        
+        self.pubLed1.publish(self.led1msg)
+        self.pubLed2.publish(self.led2msg)
         
     def move_callback(self):
         cmd = Twist()
@@ -98,32 +108,100 @@ class Odom(Node):
         if abs(self.cur_max_speed) > 0:
             if self.cur_target_angular == 0:    #linear move
                 print("LIN POS: ", self.linear_pos)
-                if (self.cur_max_speed > 0 and self.linear_pos >= self.cur_target_linear) or (self.cur_max_speed < 0 and self.linear_pos <= self.cur_target_linear):    #linear move finished - stop
+                print("SPEED: ", self.cur_max_speed)
+                if (self.cur_max_speed > 0 and self.linear_pos >= self.cur_target_linear - 0.005) or (self.cur_max_speed < 0 and self.linear_pos <= self.cur_target_linear + 0.005):    #linear move finished - stop
+                    self.pub_reset.publish(Empty())
                     self.cur_max_speed = 0.0
                     self.current_linear = 0.0
+                    self.current_angular = 0.0
+                    self.linear_pos = 0.0
+                    self.angular_pos = 0.0
+                    self.cur_target_linear = 0.0
+                    self.cur_target_angular = 0.0
+                    self.decel_pos = 0.0
+                    self.decel_pos_ang = 0.0
+                    
                     self.max_speed_list.pop(0)
                     self.target_linear_list.pop(0)
                     self.target_angular_list.pop(0)
-                    self.pub_reset.publish(Empty())
+                    
+                    if len(self.max_speed_list) > 0:
+                        self.cur_max_speed = self.max_speed_list[0]
+                        self.cur_target_linear = self.target_linear_list[0]
+                        self.cur_target_angular = self.target_angular_list[0]
+                        
+                        
+                        if self.cur_max_speed < 0:
+                            self.cur_target_linear *= -1
+                            self.cur_target_angular *= -1
+                    else:
+                        #sys.exit(0)
+                        self.led1msg = Led()
+                        self.led2msg = Led()
+                        self.led1msg.value = 0
+                        self.led2msg.value = 0
+                        self.pubLed1.publish(self.led1msg)
+                        self.pubLed2.publish(self.led2msg)
+                        
+                        
+                    
+                    time.sleep(2)
+                    return
+                    
                 #elif (self.cur_max_speed > 0 and self.linear_pos >= self.cur_target_linear - self.current_linear*0.5) or (self.cur_max_speed < 0 and self.linear_pos <= self.cur_target_linear - self.current_linear*0.5):  #decelerate to 0.01
-                elif abs(self.linear_pos) >= abs(self.cur_target_linear)/2 and (abs(self.current_linear) < abs(self.cur_max_speed) or abs(self.linear_pos) >= abs(self.cur_target_linear - self.decel_pos)): 
+                elif abs(self.linear_pos) >= abs(self.cur_target_linear)/2 and (abs(self.current_linear) < abs(self.cur_max_speed) or abs(self.linear_pos) >= abs(self.cur_target_linear) - abs(self.decel_pos)-0.05): 
                     print("deceleration working")
                     if self.cur_max_speed > 0:
-                        self.cur_max_speed = 0.01
+                        self.cur_max_speed = 0.05
                     else:
-                        self.cur_max_speed = -0.01
+                        self.cur_max_speed = -0.05
                         
             elif self.cur_target_linear == 0:   #angular move
                 print("ANGLE: ", self.angular_pos)
-                if self.linear_pos == self.cur_target_linear:    #angular move finished - stop
+                if (self.cur_max_speed > 0 and self.angular_pos >= self.cur_target_angular - 1) or (self.cur_max_speed < 0 and self.angular_pos <= self.cur_target_angular + 1):    #angular move finished - stop
+                    self.pub_reset.publish(Empty())
                     self.cur_max_speed = 0.0
+                    self.current_linear = 0.0
                     self.current_angular = 0.0
+                    self.linear_pos = 0.0
+                    self.angular_pos = 0.0
+                    self.cur_target_linear = 0.0
+                    self.cur_target_angular = 0.0
+                    self.decel_pos = 0.0
+                    self.decel_pos_ang = 0.0
+                    
                     self.max_speed_list.pop(0)
                     self.target_linear_list.pop(0)
                     self.target_angular_list.pop(0)
+                    
+                    if len(self.max_speed_list) > 0:
+                        
+                        
+                        self.cur_max_speed = self.max_speed_list[0]
+                        self.cur_target_linear = self.target_linear_list[0]
+                        self.cur_target_angular = self.target_angular_list[0]
+                        
+                        if self.cur_max_speed < 0:
+                            self.cur_target_linear *= -1
+                            self.cur_target_angular *= -1
+                    else:
+                        #sys.exit(0)
+                        self.led1msg = Led()
+                        self.led2msg = Led()
+                        self.led1msg.value = 0
+                        self.led2msg.value = 0
+                        self.pubLed1.publish(self.led1msg)
+                        self.pubLed2.publish(self.led2msg)
                     self.pub_reset.publish(Empty())
-                elif self.angular_pos > self.cur_target_angular - 15:  #decelerate to 0.01
-                    self.cur_max_speed = 0.1
+                    time.sleep(5)
+                    return
+                    
+                elif abs(self.angular_pos) >= abs(self.cur_target_angular)/2 and (abs(self.current_angular) < abs(self.cur_max_speed) or abs(self.angular_pos) >= abs(self.cur_target_angular) - abs(self.decel_pos_ang)-25): 
+                    print("deceleration working")
+                    if self.cur_max_speed > 0:
+                        self.cur_max_speed = 0.1
+                    else:
+                        self.cur_max_speed = -0.1
         
             if self.cur_target_angular == 0:    #linear move - update linear speed
                 if abs(self.cur_max_speed - self.current_linear) < self.delta_linear:
@@ -147,8 +225,14 @@ class Odom(Node):
                     self.current_angular = self.cur_max_speed
                 else:
                     if self.cur_max_speed > self.current_angular:
+                        if self.cur_max_speed > 0:
+                            self.decel_pos = self.angular_pos
+                            print("Decel pos: ", self.decel_pos_ang)
                         self.current_angular += self.delta_angular
                     elif self.cur_max_speed < self.current_angular:
+                        if self.cur_max_speed < 0:
+                            self.decel_pos = self.angular_pos
+                            print("Decel pos: ", self.decel_pos_ang)
                         self.current_angular -= self.delta_angular
                 
             cmd.linear.x = self.current_linear
@@ -219,17 +303,26 @@ def main(args=None):
                 print(aNode.target_linear_list)
                 print(aNode.target_angular_list)
                 
-            while len(aNode.max_speed_list) > 0:
-                aNode.cur_max_speed = aNode.max_speed_list[0]
-                aNode.cur_target_linear = aNode.target_linear_list[0]
-                aNode.cur_target_angular = aNode.target_angular_list[0]
+        while len(aNode.max_speed_list) > 0:
+            aNode.cur_max_speed = aNode.max_speed_list[0]
+            aNode.cur_target_linear = aNode.target_linear_list[0]
+            aNode.cur_target_angular = aNode.target_angular_list[0]
+            
+            #stuff to make sure backwards movements and right turns are done correctly
+            if aNode.cur_max_speed < 0:
+                aNode.cur_target_linear *= -1
+                aNode.cur_target_angular *= -1
                 
-                #stuff to make sure backwards movements and right turns are done correctly
-                if aNode.cur_max_speed < 0:
-                    aNode.cur_target_linear *= -1
-                    aNode.cur_target_angular *= -1
-                
-                rclpy.spin(aNode)
+            #turn off LEDs
+            aNode.led1msg = Led()
+            aNode.led2msg = Led()
+            aNode.led1msg.value = 0
+            aNode.led2msg.value = 0
+            aNode.pubLed1.publish(aNode.led1msg)
+            aNode.pubLed2.publish(aNode.led2msg)
+            rclpy.spin(aNode)
+            
+        
                 
                 aNode.should_exit_spin = False
 
