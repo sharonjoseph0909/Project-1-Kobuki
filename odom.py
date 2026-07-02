@@ -154,9 +154,34 @@ class Odom(Node):
             cmd.linear.x = self.current_linear
             cmd.angular.z = self.current_angular
             self.pub_vel.publish(cmd)
-        
-                 
-        
+    
+    def bumper_callback(self, msg):
+        if msg.state == 1:
+            self.get_logger().warn("Bumper pressed! Stopping robot....")
+
+            self.cur_max_speed = 0.0
+            self.current_linear = 0.0
+            self.current_angular = 0.0
+            cmd = Twist()
+            self.pub_vel.publish(cmd)
+
+            self.max_speed_list.clear()
+            self.target_linear_list.clear()
+            self.target_angular_list.clear()
+
+            self.should_exit_spin = True
+
+    def button_callback(self, msg):
+        if msg.button == 0 and msg.state == 1:
+            self.get_logger().error("Abort button pressed! Exiting program.")
+            
+            cmd = Twist()
+            self.pub_vel.publish(cmd)
+
+            self.finished = True
+            self.max_speed_list.clear()
+            self.should_exit_spin = True
+          
     
 def main(args=None):
     rclpy.init(args=args)
@@ -206,7 +231,16 @@ def main(args=None):
                 
                 rclpy.spin(aNode)
                 
-            
+                aNode.should_exit_spin = False
+
+                #sharon
+                while rclpy.ok() and not aNode.should_exit_spin:
+                    rclpy.spin_once(aNode, timeout_sec=0.1)
+                
+                if aNode.finished:
+                    break
+
+
         
     except KeyboardInterrupt:
         pass

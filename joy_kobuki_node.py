@@ -9,6 +9,7 @@ from kobuki_ros_interfaces.msg import Sound
 from kobuki_ros_interfaces.msg import BumperEvent
 from kobuki_ros_interfaces.msg import ButtonEvent
 
+
 class JoyKobukiNode(Node): 
     def __init__(self):
         super().__init__('joy_demo')
@@ -30,7 +31,11 @@ class JoyKobukiNode(Node):
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.pubLed1 = self.create_publisher(Led, '/commands/led1', 1)
         self.pubLed2 = self.create_publisher(Led, '/commands/led2', 1)
-        
+
+        # added subscriptions for bumper and button events sharon
+        self.bumper_sub = self.create_subscription(BumperEvent, '/events/bumper', self.bumper_callback, 10) 
+        self.button_sub = self.create_subscription(ButtonEvent, '/events/button', self.button_callback, 10) 
+        self.should_exit_spin = False
         #timer for led demo
         #self.timer = self.create_timer(2, self.timer_callback)
         
